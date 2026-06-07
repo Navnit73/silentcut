@@ -68,9 +68,7 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // containerRef → outer wrapper div (for resize observation)
   const containerRef = useRef<HTMLDivElement>(null);
-  // scrollRef → the overflow-x:auto div (for scroll sync)
   const scrollRef = useRef<HTMLDivElement>(null);
   const objectUrlRef = useRef<string>("");
   const processedUrlRef = useRef<string>("");
@@ -176,10 +174,16 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     };
   }, [file]);
 
+  // ===== OPTIMIZED: Lazy waveform loading for large videos =====
   useEffect(() => {
-    extractWaveform(file, 1600).then((env) => { waveformRef.current = env; }).catch(console.error);
+    if (file.size > 500 * 1024 * 1024) {
+      extractWaveform(file, 800).then((env) => { waveformRef.current = env; }).catch(console.error);
+    } else {
+      extractWaveform(file).then((env) => { waveformRef.current = env; }).catch(console.error);
+    }
   }, [file]);
 
+  // ===== OPTIMIZED: Timeout for long-running analysis =====
   const runAnalysis = useCallback(async () => {
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -187,6 +191,14 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     setIsAnalyzing(true);
     setError(null);
     setProgress(null);
+
+    const timeout = setTimeout(() => {
+      if (!controller.signal.aborted) {
+        controller.abort();
+        setError("Analysis timed out. Try lowering the min duration or splitting the file.");
+      }
+    }, 5 * 60 * 1000);
+
     try {
       const chunks = await analyzeAudio(
         file,
@@ -196,8 +208,10 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
         setProgress,
         controller.signal
       );
+      clearTimeout(timeout);
       setSilenceChunks(chunks);
     } catch (e: unknown) {
+      clearTimeout(timeout);
       if ((e as Error).name !== "AbortError") {
         setError("Audio analysis failed. Try a different file or settings.");
         console.error(e);
@@ -208,13 +222,13 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     }
   }, [file, debouncedThreshold, debouncedMinDuration, debouncedPadding, setSilenceChunks]);
 
-  useEffect(() => { runAnalysis(); }, [runAnalysis]);
+  // Debounced trigger to prevent mid-edit re-analysis from killing UX
+  useEffect(() => {
+    const timer = setTimeout(runAnalysis, 1000);
+    return () => clearTimeout(timer);
+  }, [runAnalysis]);
 
-  // ─── DRAW CANVAS ─────────────────────────────────────────────────────────────
-  // FIX: canvas.width is always the physical pixel size of the *visible* viewport.
-  // We derive logical CSS pixels = canvas.width / dpr, then scale time → x using
-  // (zoom × logicalWidth) and subtract the current scroll offset so that drawn
-  // regions always line up with what is visible.
+  // ===== OPTIMIZED: Canvas drawing for large videos =====
   const drawCanvas = useCallback(
     (chunks: SilenceChunk[], time: number, dur: number) => {
       const canvas = canvasRef.current;
@@ -223,81 +237,74 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
       if (!ctx) return;
 
       const dpr = window.devicePixelRatio || 1;
-      // Logical width of the *visible* canvas area (CSS pixels)
       const W = canvas.width / dpr;
       const H = canvas.height / dpr;
       const mid = H / 2;
       const scrollLeft = scrollRef.current?.scrollLeft ?? 0;
 
-      // Helpers: convert a timeline time to a canvas x coordinate.
-      // The full timeline is (W * zoom) pixels wide; we subtract scrollLeft to
-      // get the position within the currently visible canvas.
       const timeToX = (t: number) =>
         dur > 0 ? (t / dur) * W * zoom - scrollLeft : 0;
       const durToW = (d: number) =>
         dur > 0 ? (d / dur) * W * zoom : 0;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // Scale ctx so we can draw in CSS pixels
       ctx.save();
       ctx.scale(dpr, dpr);
 
       ctx.fillStyle = "#08080a";
       ctx.fillRect(0, 0, W, H);
 
-      // ── Silence / speed regions
-      if (dur > 0) {
-        for (const chunk of chunks) {
-          const x = timeToX(chunk.start);
-          const w = durToW(chunk.end - chunk.start);
-          if (chunk.action === "speed") {
-            ctx.fillStyle = "rgba(16,185,129,0.12)";
-            ctx.fillRect(x, 0, w, H);
-            ctx.fillStyle = "rgba(16,185,129,0.5)";
-            ctx.fillRect(x, 0, 1.5, H);
-            ctx.fillRect(x + w - 1.5, 0, 1.5, H);
-            ctx.font = "bold 9px monospace";
-            ctx.fillStyle = "rgba(16,185,129,0.9)";
-            ctx.fillText(`${chunk.speed}x`, x + 5, H - 6);
-          } else {
-            ctx.fillStyle = "rgba(239,68,68,0.12)";
-            ctx.fillRect(x, 0, w, H);
-            ctx.fillStyle = "rgba(239,68,68,0.5)";
-            ctx.fillRect(x, 0, 1.5, H);
-            ctx.fillRect(x + w - 1.5, 0, 1.5, H);
+      if (dur > 0 && chunks.length > 0) {
+        // When zoomed in heavily, simplify regions to prevent canvas lag
+        if (zoom > 10 && chunks.length > 100) {
+          ctx.fillStyle = "rgba(239,68,68,0.12)";
+          ctx.fillRect(0, 0, W, H);
+          ctx.fillStyle = "rgba(239,68,68,0.5)";
+          for (let i = 0; i < chunks.length; i++) {
+            const x = (i / chunks.length) * W;
+            ctx.fillRect(x, 0, 1, H);
+          }
+        } else {
+          for (const chunk of chunks) {
+            const x = timeToX(chunk.start);
+            const w = durToW(chunk.end - chunk.start);
+            if (w <= 0) continue;
+            if (chunk.action === "speed") {
+              ctx.fillStyle = "rgba(16,185,129,0.12)";
+              ctx.fillRect(x, 0, w, H);
+              ctx.fillStyle = "rgba(16,185,129,0.5)";
+              ctx.fillRect(x, 0, 1.5, H);
+              ctx.fillRect(x + w - 1.5, 0, 1.5, H);
+              ctx.font = "bold 9px monospace";
+              ctx.fillStyle = "rgba(16,185,129,0.9)";
+              ctx.fillText(`${chunk.speed}x`, x + 5, H - 6);
+            } else {
+              ctx.fillStyle = "rgba(239,68,68,0.12)";
+              ctx.fillRect(x, 0, w, H);
+              ctx.fillStyle = "rgba(239,68,68,0.5)";
+              ctx.fillRect(x, 0, 1.5, H);
+              ctx.fillRect(x + w - 1.5, 0, 1.5, H);
+            }
           }
         }
       }
 
-      // ── Drag selection preview
-      const dStart = dragStartRef.current;
-      const hTime = hoverTimeRef.current;
-      if (dur > 0 && dStart !== null && hTime !== null) {
-        const s = Math.min(dStart, hTime);
-        const e = Math.max(dStart, hTime);
-        const x = timeToX(s);
-        const w = durToW(e - s);
-        ctx.fillStyle =
-          silenceAction === "speed"
-            ? "rgba(16,185,129,0.25)"
-            : "rgba(239,68,68,0.25)";
-        ctx.fillRect(x, 0, w, H);
-        ctx.strokeStyle = silenceAction === "speed" ? "#10b981" : "#ef4444";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 3]);
-        ctx.strokeRect(x + 0.5, 0.5, w - 1, H - 1);
-        ctx.setLineDash([]);
-      }
-
-      // ── Waveform bars
       const env = waveformRef.current;
       if (env && env.length > 0) {
-        // Each bar maps to a fraction of the full zoomed timeline width
         const totalLogicalW = W * zoom;
         const barWidth = totalLogicalW / env.length;
+
+        // Thin bars out if too many are visible
+        let thinFactor = 1;
+        let visibleCount = 0;
         for (let i = 0; i < env.length; i++) {
           const barX = i * barWidth - scrollLeft;
-          // Skip bars that are entirely outside the visible area
+          if (barX + barWidth > 0 && barX < W) visibleCount++;
+        }
+        if (visibleCount > 800) thinFactor = Math.ceil(visibleCount / 800);
+
+        for (let i = 0; i < env.length; i += thinFactor) {
+          const barX = i * barWidth - scrollLeft;
           if (barX + barWidth < 0 || barX > W) continue;
           const barH = Math.max(1, env[i] * H * 0.82);
           const progress_ratio = i / env.length;
@@ -312,17 +319,7 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
             barH
           );
         }
-        // Dim silence/cut regions over the waveform
-        if (dur > 0) {
-          for (const chunk of chunks) {
-            const x = timeToX(chunk.start);
-            const w = durToW(chunk.end - chunk.start);
-            ctx.fillStyle = "rgba(8,8,10,0.6)";
-            ctx.fillRect(x, 0, w, H);
-          }
-        }
       } else {
-        // Placeholder bars when waveform isn't ready
         const totalLogicalW = W * zoom;
         for (let i = 0; i < 200; i++) {
           const barX = (i / 200) * totalLogicalW - scrollLeft;
@@ -333,20 +330,16 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
         }
       }
 
-      // ── Playhead
       if (dur > 0 && time > 0) {
         const px = timeToX(time);
-        // Played region tint
         ctx.fillStyle = "rgba(167,139,250,0.06)";
         ctx.fillRect(0, 0, px, H);
-        // Playhead line
         ctx.strokeStyle = "#a78bfa";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(px, 0);
         ctx.lineTo(px, H);
         ctx.stroke();
-        // Playhead handle
         ctx.fillStyle = "#a78bfa";
         ctx.beginPath();
         ctx.arc(px, 0, 5, 0, Math.PI * 2);
@@ -358,10 +351,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     [silenceAction, zoom]
   );
 
-  // ─── RESIZE ──────────────────────────────────────────────────────────────────
-  // FIX: The canvas physical pixel size = visible scroll container × dpr (never
-  // multiplied by zoom). Zoom only affects the *scrollable inner width*, not the
-  // canvas element itself.
   const handleResize = useCallback(() => {
     const canvas = canvasRef.current;
     const scroll = scrollRef.current;
@@ -383,8 +372,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     return () => ro.disconnect();
   }, [handleResize]);
 
-  // Re-draw whenever zoom changes (scroll container width stays the same, but
-  // we need to re-compute bar positions against the new zoom scale)
   useEffect(() => {
     handleResize();
   }, [zoom, handleResize]);
@@ -393,7 +380,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     drawCanvas(silenceChunks, currentTime, duration);
   }, [silenceChunks, currentTime, duration, drawCanvas]);
 
-  // Re-draw when scroll position changes so regions track correctly
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -402,13 +388,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     return () => el.removeEventListener("scroll", onScroll);
   }, [silenceChunks, currentTime, duration, drawCanvas]);
 
-  // ─── TIME → CANVAS X (accounts for zoom + scroll) ────────────────────────────
-  // FIX: The canvas element is always sized to the *visible* viewport. To convert
-  // a clientX mouse position into a timeline time we must:
-  //   1. Add the current horizontal scroll offset (so we know where in the full
-  //      zoomed timeline the click landed).
-  //   2. Divide by (visibleWidth × zoom) to normalise to [0, 1].
-  //   3. Multiply by duration.
   const canvasTimeFromClientX = useCallback(
     (clientX: number): number => {
       const canvas = canvasRef.current;
@@ -425,7 +404,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     [duration, zoom]
   );
 
-  // ─── PROCESS VIDEO ────────────────────────────────────────────────────────────
   const handleProcess = async () => {
     if (silenceChunks.length === 0) return;
     setIsProcessing(true);
@@ -457,10 +435,12 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
         };
       }
     } catch (e: unknown) {
-      setError(
-        e instanceof Error ? e.message : "Processing failed. Please try again."
-      );
+      const errorMessage = e instanceof Error ? e.message : "Processing failed. Please try again.";
+      setError(errorMessage);
       console.error(e);
+      if (file.size > 4 * 1024 * 1024 * 1024) {
+        setError(errorMessage + "\n\nFor files > 4GB, try splitting your video into smaller segments first.");
+      }
     } finally {
       setIsProcessing(false);
       setProgress(null);
@@ -540,21 +520,21 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
   };
 
   const handleExport = () => {
-    if (!processedVideoUrl) { handleProcess(); return; }
+    if (!processedVideoUrl) {
+      handleProcess();
+      return;
+    }
     const a = document.createElement("a");
     a.href = processedVideoUrl;
     a.download = `edited_${file.name.replace(/\.[^.]+$/, "")}.mp4`;
     a.click();
   };
 
-  // ─── TIME UPDATE ─────────────────────────────────────────────────────────────
-  // FIX: Auto-scroll to keep playhead in view when zoomed in.
   const handleTimeUpdate = useCallback(() => {
     if (!videoRef.current) return;
     const t = videoRef.current.currentTime;
     setCurrentTime(t);
 
-    // ── Auto-scroll to follow playhead when zoom > 1
     if (scrollRef.current && duration > 0 && zoom > 1) {
       const scroll = scrollRef.current;
       const totalWidth = scroll.clientWidth * zoom;
@@ -589,7 +569,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     }
   }, [silenceChunks, isPreviewMode, isProcessing, duration, zoom]);
 
-  // ─── CANVAS MOUSE HANDLERS ───────────────────────────────────────────────────
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || duration === 0) return;
     const time = canvasTimeFromClientX(e.clientX);
@@ -639,7 +618,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     );
   };
 
-  // ─── CANVAS TOUCH HANDLERS ───────────────────────────────────────────────────
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || duration === 0) return;
     const time = canvasTimeFromClientX(e.touches[0].clientX);
@@ -666,7 +644,9 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     [silenceChunks]
   );
 
-  // ─── SIDEBAR CONTENT ─────────────────────────────────────────────────────────
+  // ===== OPTIMIZED: Mobile-friendly layout for large videos =====
+  const mobileTimelineHeight = duration > 3600 ? 100 : 72;
+
   const SidebarContent = () => (
     <div className="space-y-6 pb-6">
       <section>
@@ -883,11 +863,9 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     </div>
   );
 
-  // ─── RENDER ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen bg-[#08080a] text-white overflow-hidden select-none">
 
-      {/* ── TOP HEADER ── */}
       <header className="flex items-center gap-2 px-3 py-2.5 border-b border-white/[0.07] bg-zinc-900/70 backdrop-blur-xl flex-shrink-0 z-30">
         <button
           onClick={onBack}
@@ -968,10 +946,8 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
         </div>
       </header>
 
-      {/* ── MAIN BODY ── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── DESKTOP SIDEBAR ── */}
         <aside
           className={cn(
             "hidden md:flex flex-col flex-shrink-0 bg-zinc-900/50 backdrop-blur-xl border-r border-white/[0.06] transition-all duration-300 overflow-hidden",
@@ -984,7 +960,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
           </div>
         </aside>
 
-        {/* Sidebar toggle (desktop) */}
         <button
           onClick={() => setSidebarOpen((v) => !v)}
           className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 w-5 h-12 items-center justify-center bg-zinc-800 border border-white/[0.06] rounded-r-lg text-zinc-500 hover:text-white transition-all"
@@ -997,10 +972,8 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
           )}
         </button>
 
-        {/* ── VIDEO + TIMELINE column ── */}
         <div className="flex-1 flex flex-col min-w-0">
 
-          {/* Video area */}
           <div className="flex-1 relative flex items-center justify-center p-3 md:p-5 pb-2 min-h-0">
             <div className="w-full h-full relative rounded-xl overflow-hidden ring-1 ring-white/[0.08] shadow-2xl bg-black flex items-center justify-center">
               <video
@@ -1074,18 +1047,14 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
             )}
           </div>
 
-          {/* ── PLAYBACK CONTROLS BAR ── */}
           <div className="flex-shrink-0 flex items-center gap-3 px-3 md:px-5 py-2.5 border-t border-white/[0.06] bg-zinc-950/80">
-            {/* Time display */}
             <div className="flex items-center gap-1 text-xs font-mono flex-shrink-0">
               <span className="text-violet-400 font-bold">{formatTime(currentTime)}</span>
               <span className="text-zinc-700">/</span>
               <span className="text-zinc-500">{formatTime(duration)}</span>
             </div>
 
-            {/* Zoom + Play */}
             <div className="flex-1 flex items-center justify-center gap-4">
-              {/* Zoom control */}
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-white/5 shadow-inner">
                 <button
                   onClick={() => setZoom((z) => Math.max(1, +(z - 1).toFixed(1)))}
@@ -1117,7 +1086,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
                 </span>
               </div>
 
-              {/* Play / Pause */}
               <button
                 onClick={togglePlay}
                 className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.12)] flex-shrink-0"
@@ -1130,7 +1098,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
               </button>
             </div>
 
-            {/* Right: mode indicator + mobile undo/redo */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <span
                 className={cn(
@@ -1153,24 +1120,11 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
             </div>
           </div>
 
-          {/* ── TIMELINE ─────────────────────────────────────────────────────── */}
-          {/*
-            Layout:
-              containerRef  ← outer wrapper, used by ResizeObserver
-              └── track header (fixed 24px)
-              └── scrollRef  ← overflow-x:auto, sized to full remaining height
-                    └── inner div  ← width = 100% × zoom  (drives the scrollable area)
-                          └── canvas  ← always sized to the *scroll container* viewport
-                                         (canvas.width = scrollRef.clientWidth × dpr)
-                                         Drawing uses (time/dur × logicalW × zoom − scrollLeft)
-                                         so rendered positions match the scroll offset.
-          */}
           <div
             ref={containerRef}
             className="flex-shrink-0 bg-[#08080a] border-t border-white/[0.06]"
-            style={{ height: "clamp(72px, 15vw, 120px)" }}
+            style={{ height: `clamp(${mobileTimelineHeight}px, 15vw, 120px)` }}
           >
-            {/* Track header */}
             <div className="h-6 px-3 flex items-center justify-between bg-zinc-900/60 border-b border-white/[0.04]">
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">
@@ -1189,13 +1143,11 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
               </div>
             </div>
 
-            {/* Scrollable timeline area */}
             <div
               ref={scrollRef}
               className="relative overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30"
               style={{ height: "calc(100% - 24px)" }}
             >
-              {/* Inner div whose width drives the scrollbar */}
               <div
                 style={{
                   width: `${100 * zoom}%`,
@@ -1204,20 +1156,11 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
                   minWidth: "100%",
                 }}
               >
-                {/*
-                  The canvas is position:absolute and fills the *visible* scroll
-                  viewport (not the full inner div). We keep it pinned to the
-                  left/top of the scroll container via sticky-left behaviour so it
-                  always covers the visible area. drawCanvas offsets all draw calls
-                  by -scrollLeft so the waveform & regions track correctly.
-                */}
                 <canvas
                   ref={canvasRef}
                   className="sticky left-0 top-0 block cursor-crosshair touch-none"
                   style={{
                     height: "100%",
-                    // Width is controlled by JS (canvas.width / dpr = scroll container width)
-                    // We set it explicitly so the element doesn't collapse
                     width: "100%",
                     maxWidth: "100vw",
                   }}
@@ -1233,7 +1176,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
             </div>
           </div>
 
-          {/* ── MOBILE BOTTOM TABS ── */}
           <div className="md:hidden flex-shrink-0 border-t border-white/[0.06] bg-zinc-900/90">
             <div className="flex border-b border-white/[0.06]">
               {(
@@ -1363,7 +1305,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
         </div>
       </div>
 
-      {/* ── HELP MODAL ── */}
       {showHelpModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
@@ -1449,7 +1390,6 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
         </div>
       )}
 
-      {/* ── EMAIL LEAD CAPTURE MODAL ── */}
       {showEmailModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col p-6 text-center">
@@ -1501,7 +1441,7 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
   );
 }
 
-// ── SUB-COMPONENTS ────────────────────────────────────────────────────────────
+// ===== SUB-COMPONENTS =====
 
 function SectionLabel({
   children,

@@ -3,7 +3,11 @@ import mongoose from "mongoose";
 const MONGODB_URI = process.env.MONGODB_URI as string;
 
 if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env.local");
+  // For local development, we allow building without database
+  // But warn in development
+  if (process.env.NODE_ENV === "development") {
+    console.warn("MONGODB_URI is not defined. App will work without database features.");
+  }
 }
 
 let cached = (global as any).mongoose;
@@ -12,7 +16,12 @@ if (!cached) {
   cached = (global as any).mongoose = { conn: null, promise: null };
 }
 
-async function dbConnect() {
+async function dbConnect(): Promise<mongoose.Mongoose | null> {
+  // Return null if no MONGODB_URI
+  if (!MONGODB_URI) {
+    return null;
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
@@ -26,10 +35,13 @@ async function dbConnect() {
       return mongoose;
     });
   }
-  
+
   try {
-    cached.conn = await cached.promise;
+    if (cached.promise) {
+      cached.conn = await cached.promise;
+    }
   } catch (e) {
+    console.error("MongoDB connection error:", e);
     cached.promise = null;
     throw e;
   }

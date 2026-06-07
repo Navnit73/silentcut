@@ -40,7 +40,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       if (line.trim() === "") {
         return <div key={i} className="h-4" />;
       }
-      return <p key={i} className="text-lg leading-relaxed text-zinc-400 mb-6">{line}</p>;
+      return <p key={i} className="text-base sm:text-lg leading-relaxed text-zinc-400 mb-4 sm:mb-6">{line}</p>;
     });
   };
 
@@ -49,18 +49,18 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       {/* Background Glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 blur-[120px] rounded-full -z-10 pointer-events-none" />
 
-      <main className="max-w-4xl mx-auto px-8 py-20">
+      <main className="max-w-4xl mx-auto px-4 sm:px-8 py-12 sm:py-20">
         {/* Back Link */}
         <Link 
           href="/blog" 
-          className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors mb-12 group"
+          className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors mb-8 sm:mb-12 group text-sm"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
           Back to Blog
         </Link>
 
         {/* Article Header */}
-        <header className="mb-16 space-y-6">
+        <header className="mb-10 sm:mb-16 space-y-4 sm:space-y-6">
           <div className="flex gap-2">
             {post.tags.map(tag => (
               <span key={tag} className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
@@ -69,11 +69,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             ))}
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-black tracking-tighter leading-[1.1]">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-[1.1]">
             {post.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-6 text-zinc-500 text-sm pt-4">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-zinc-500 text-xs sm:text-sm pt-4">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               {new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -95,10 +95,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         </article>
 
         {/* Subscribe Section */}
-        <div className="mt-20 p-8 rounded-3xl bg-white/5 border border-white/10 glass text-center space-y-6">
-          <h3 className="text-2xl font-bold">Never miss a post</h3>
-          <p className="text-zinc-400">Join 10,000+ creators getting the latest AI video tips.</p>
-          <div className="flex max-w-md mx-auto gap-3">
+        <div className="mt-12 sm:mt-20 p-5 sm:p-8 rounded-2xl sm:rounded-3xl bg-white/5 border border-white/10 glass text-center space-y-4 sm:space-y-6">
+          <h3 className="text-xl sm:text-2xl font-bold">Never miss a post</h3>
+          <p className="text-sm sm:text-base text-zinc-400">Join 10,000+ creators getting the latest AI video tips.</p>
+          <div className="flex flex-col sm:flex-row max-w-md mx-auto gap-3">
             <input 
               type="email" 
               placeholder="Enter your email" 
@@ -112,7 +112,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       </main>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-8 py-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-zinc-500 text-sm mt-12">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 text-zinc-500 text-sm mt-12 text-center">
         <p>© 2026 SilenceAI Editor. All rights reserved.</p>
         <div className="flex gap-8">
           <Link href="/about" className="hover:text-white transition-colors">About</Link>

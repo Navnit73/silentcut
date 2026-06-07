@@ -447,55 +447,13 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
     }
   };
 
-  const isPremiumExport = exportRes !== "720p";
-  const needsPayment = isPremiumExport && !isPro && !hasPaidForExport;
-  const priceToDisplay =
-    duration <= 600 ? pricing?.short.display : pricing?.long.display;
-
+  // All exports are now free - just ask for email optionally
   const handleRenderClick = async () => {
-    if (needsPayment) {
-      setIsProcessing(true);
-      setError(null);
-      setProgress({ message: "Initializing secure gateway…", progress: 0 });
-      try {
-        const res = await fetch("/api/razorpay", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ durationSeconds: duration }),
-        });
-        const order = await res.json();
-        if (order.error) throw new Error(order.error);
-        const options = {
-          key: order.key,
-          amount: order.amount,
-          currency: order.currency,
-          name: "SilenceAI Pro",
-          description: exportRes.toUpperCase() + " Master Output",
-          order_id: order.id,
-          handler: function () {
-            setHasPaidForExport(true);
-            handleProcess();
-          },
-          theme: { color: "#7c3aed" },
-        };
-        const rzp1 = new (window as any).Razorpay(options);
-        rzp1.on("payment.failed", function (response: any) {
-          setError(response.error.description || "Payment failed");
-        });
-        rzp1.open();
-        setIsProcessing(false);
-        setProgress(null);
-      } catch (e: any) {
-        setError(e.message || "Could not contact billing server.");
-        setIsProcessing(false);
-        setProgress(null);
-      }
+    // If no session, show email modal (optional, can skip)
+    if (!session && !hasPaidForExport) {
+      setShowEmailModal(true);
     } else {
-      if (!session && !hasPaidForExport) {
-        setShowEmailModal(true);
-      } else {
-        handleProcess();
-      }
+      handleProcess();
     }
   };
 
@@ -1047,15 +1005,15 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
             )}
           </div>
 
-          <div className="flex-shrink-0 flex items-center gap-3 px-3 md:px-5 py-2.5 border-t border-white/[0.06] bg-zinc-950/80">
+          <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 border-t border-white/[0.06] bg-zinc-950/80">
             <div className="flex items-center gap-1 text-xs font-mono flex-shrink-0">
               <span className="text-violet-400 font-bold">{formatTime(currentTime)}</span>
               <span className="text-zinc-700">/</span>
               <span className="text-zinc-500">{formatTime(duration)}</span>
             </div>
 
-            <div className="flex-1 flex items-center justify-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-white/5 shadow-inner">
+            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-4">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/40 border border-white/5 shadow-inner">
                 <button
                   onClick={() => setZoom((z) => Math.max(1, +(z - 1).toFixed(1)))}
                   className="p-1 hover:bg-white/10 rounded transition-colors text-zinc-400 hover:text-white"
@@ -1088,7 +1046,7 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
 
               <button
                 onClick={togglePlay}
-                className="w-10 h-10 md:w-11 md:h-11 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.12)] flex-shrink-0"
+                className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.12)] flex-shrink-0"
               >
                 {isPlaying ? (
                   <Pause className="w-4 h-4 fill-current" />
@@ -1176,7 +1134,7 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
             </div>
           </div>
 
-          <div className="md:hidden flex-shrink-0 border-t border-white/[0.06] bg-zinc-900/90">
+          <div className="md:hidden flex-shrink-0 border-t border-white/[0.06] bg-zinc-900/90 safe-bottom">
             <div className="flex border-b border-white/[0.06]">
               {(
                 [
@@ -1208,7 +1166,7 @@ export default function Editor({ files, onBack, isPro, onTogglePro }: EditorProp
               </button>
             </div>
 
-            <div className="overflow-y-auto px-4 pt-4" style={{ maxHeight: "38vh" }}>
+            <div className="overflow-y-auto px-3 sm:px-4 pt-3 sm:pt-4" style={{ maxHeight: "35vh" }}>
               {mobileTab === "controls" && (
                 <div className="space-y-4 pb-4">
                   <div className="flex p-1 rounded-xl bg-black/50 border border-white/[0.06] gap-1">

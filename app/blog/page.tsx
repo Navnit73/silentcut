@@ -10,14 +10,14 @@ export default function BlogPage() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/10 blur-[120px] rounded-full -z-10 pointer-events-none" />
 
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto border-b border-white/5">
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-5 sm:py-6 max-w-7xl mx-auto border-b border-white/5">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
             <Zap className="w-5 h-5 text-white" />
           </div>
           <span className="font-bold text-xl tracking-tight">Silence<span className="text-primary">AI</span></span>
         </Link>
-        <div className="flex items-center gap-8 text-sm font-medium text-zinc-400">
+        <div className="hidden sm:flex items-center gap-6 md:gap-8 text-sm font-medium text-zinc-400">
           {process.env.NEXT_PUBLIC_DEMO_MODE !== "true" && (
             <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
           )}
@@ -25,12 +25,12 @@ export default function BlogPage() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-8 py-20">
-        <div className="max-w-3xl mb-16">
-          <h1 className="text-5xl font-bold tracking-tighter mb-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-20">
+        <div className="max-w-3xl mb-10 sm:mb-16">
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tighter mb-4 sm:mb-6">
             Latest from the <span className="gradient-text">Blog</span>
           </h1>
-          <p className="text-xl text-zinc-400 leading-relaxed">
+          <p className="text-base sm:text-xl text-zinc-400 leading-relaxed">
             Tips, tutorials, and deep dives into the world of AI-powered video editing and content creation.
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function BlogPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-8 py-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-zinc-500 text-sm mt-12 bg-black">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 text-zinc-500 text-sm mt-12 bg-black text-center">
         <p>© 2026 SilenceAI Editor. All rights reserved.</p>
         <div className="flex gap-8">
           <Link href="/about" className="hover:text-white transition-colors">About</Link>

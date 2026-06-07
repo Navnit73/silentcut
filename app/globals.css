@@ -45,3 +45,54 @@ body {
 .gradient-bg {
   background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
 }
+
+/* Mobile optimizations */
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+/* Safe area padding for notched phones */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Better touch targets for range inputs on mobile */
+@media (max-width: 640px) {
+  input[type="range"] {
+    height: 6px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Scrollbar styling */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Hide scrollbar on mobile for cleaner look */
+@media (max-width: 640px) {
+  .scrollbar-thin::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-thin {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

@@ -13,39 +13,39 @@ export default function PricingPage() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/20 blur-[120px] rounded-full -z-10 pointer-events-none" />
       
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-5 sm:py-6 max-w-7xl mx-auto">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center shadow-lg shadow-primary/20">
             <Zap className="w-5 h-5 text-white" />
           </div>
           <span className="font-bold text-xl tracking-tight">Silence<span className="text-primary">AI</span></span>
         </Link>
-        <div className="flex items-center gap-8 text-sm font-medium text-zinc-400">
+        <div className="hidden sm:flex items-center gap-6 md:gap-8 text-sm font-medium text-zinc-400">
            <Link href="/pricing" className="text-white">Pricing</Link>
            <Link href="/blog" className="hover:text-white transition-colors">Blog</Link>
            <Link href="/faq" className="hover:text-white transition-colors">FAQ</Link>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-8 py-20 flex flex-col items-center text-center">
-        <div className="space-y-6 max-w-3xl mb-20">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-12 sm:py-20 flex flex-col items-center text-center">
+        <div className="space-y-6 max-w-3xl mb-12 sm:mb-20">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest">
             <Star className="w-3 h-3" />
             Simple Pay-As-You-Go
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter leading-none mb-4">
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold tracking-tighter leading-none mb-4">
             No subscriptions. <br />
             <span className="gradient-text tracking-tighter">Only pay for what you use.</span>
           </h1>
-          <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
+          <p className="text-base sm:text-xl text-zinc-400 max-w-2xl mx-auto">
             Professional silence removal without the monthly commitment. Choose the tier that fits your video length.
           </p>
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 w-full max-w-5xl">
           {/* Short Form Tier */}
-          <div className="relative group p-8 rounded-3xl bg-zinc-900/50 border border-white/10 glass hover:border-primary/50 transition-all duration-300 transform hover:-translate-y-2">
+          <div className="relative group p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-zinc-900/50 border border-white/10 glass hover:border-primary/50 transition-all duration-300 transform hover:-translate-y-2">
             <div className="absolute -top-4 right-8 px-3 py-1 bg-zinc-800 rounded-full text-[10px] font-bold tracking-widest uppercase border border-white/10">Most Popular</div>
             
             <div className="flex flex-col items-center mb-8">
@@ -80,7 +80,7 @@ export default function PricingPage() {
           </div>
 
           {/* Long Form Tier */}
-          <div className="relative group p-8 rounded-3xl bg-zinc-900/50 border border-white/10 glass hover:border-orange-500/50 transition-all duration-300 transform hover:-translate-y-2">
+          <div className="relative group p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-zinc-900/50 border border-white/10 glass hover:border-orange-500/50 transition-all duration-300 transform hover:-translate-y-2">
             <div className="flex flex-col items-center mb-8">
               <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500 mb-6">
                 <FileVideo className="w-7 h-7" />
@@ -114,7 +114,7 @@ export default function PricingPage() {
         </div>
 
         {/* Trust Section */}
-        <div className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-12 text-zinc-500 max-w-4xl">
+        <div className="mt-16 sm:mt-32 grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12 text-zinc-500 max-w-4xl">
           <div className="flex flex-col items-center gap-4">
             <Shield className="w-8 h-8 text-zinc-400" />
             <p className="text-sm">Secure Stripe Payments</p>
@@ -133,7 +133,7 @@ export default function PricingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-8 py-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-zinc-500 text-sm">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 text-zinc-500 text-sm text-center">
         <p>© 2026 SilenceAI Editor. All rights reserved.</p>
         <div className="flex gap-8">
            <Link href="/about" className="hover:text-white transition-colors">About</Link>

@@ -88,7 +88,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-violet-500/30">
-      <nav className="flex items-center justify-between px-6 py-5 max-w-5xl mx-auto border-b border-white/5">
+      <nav className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 max-w-5xl mx-auto border-b border-white/5">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-900/20">
             <Zap className="w-4 h-4 text-white" />
@@ -100,13 +100,13 @@ export default function Dashboard() {
         </button>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-6 py-12">
-        <h1 className="text-3xl font-bold tracking-tight mb-8">Dashboard</h1>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6 sm:mb-8">Dashboard</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
           {/* Profile Card */}
-          <div className="col-span-1 md:col-span-2 bg-zinc-900 border border-white/5 rounded-2xl p-8 shadow-xl flex gap-6 items-center">
+          <div className="col-span-1 md:col-span-2 bg-zinc-900 border border-white/5 rounded-2xl p-5 sm:p-8 shadow-xl flex flex-col sm:flex-row gap-4 sm:gap-6 items-center sm:items-center">
             {session?.user?.image ? (
               <img src={session.user.image} alt="Profile" className="w-20 h-20 rounded-full border-2 border-white/10" />
             ) : (
@@ -114,8 +114,8 @@ export default function Dashboard() {
                 <span className="text-2xl font-bold text-zinc-500">{session?.user?.name?.[0]}</span>
               </div>
             )}
-            <div>
-              <h2 className="text-2xl font-bold text-white">{session?.user?.name}</h2>
+            <div className="text-center sm:text-left">
+              <h2 className="text-xl sm:text-2xl font-bold text-white">{session?.user?.name}</h2>
               <p className="text-zinc-500 mb-2">{session?.user?.email}</p>
               {isPro ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-wider rounded-md border border-emerald-500/20">
@@ -131,7 +131,7 @@ export default function Dashboard() {
 
           {/* Subscription Action Card */}
           {!isDemo && (
-            <div className="col-span-1 bg-gradient-to-b from-violet-900/40 to-zinc-900 border border-violet-500/30 rounded-2xl p-8 shadow-[0_0_30px_rgba(124,58,237,0.1)] flex flex-col justify-center">
+            <div className="col-span-1 bg-gradient-to-b from-violet-900/40 to-zinc-900 border border-violet-500/30 rounded-2xl p-5 sm:p-8 shadow-[0_0_30px_rgba(124,58,237,0.1)] flex flex-col justify-center">
               {isPro ? (
                 <div className="space-y-4 text-center">
                   <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 mx-auto flex items-center justify-center">
@@ -170,7 +170,7 @@ export default function Dashboard() {
           )}
 
           {isDemo && (
-            <div className="col-span-1 bg-gradient-to-br from-emerald-900/40 to-zinc-900 border border-emerald-500/30 rounded-2xl p-8 shadow-[0_0_30px_rgba(16,185,129,0.1)] flex flex-col justify-center text-center space-y-4">
+            <div className="col-span-1 bg-gradient-to-br from-emerald-900/40 to-zinc-900 border border-emerald-500/30 rounded-2xl p-5 sm:p-8 shadow-[0_0_30px_rgba(16,185,129,0.1)] flex flex-col justify-center text-center space-y-4">
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 mx-auto flex items-center justify-center">
                 <ShieldCheck className="w-6 h-6" />
               </div>

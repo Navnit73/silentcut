@@ -27,17 +27,13 @@ export default function Dropzone({ onFileSelect, isPro, className }: DropzonePro
       setRejectedMsg(null);
 
       if (accepted.length > 0) {
-        if (!isPro && accepted.length > 1) {
-          setRejectedMsg("Upgrade to Pro to queue multiple videos at once. Analyzing first video only.");
-          onFileSelect([accepted[0]]);
-        } else {
-          onFileSelect(accepted);
-        }
+        // Free users can now upload multiple videos too
+        onFileSelect(accepted);
       } else if (rejected.length > 0) {
         setRejectedMsg("Unsupported file type. Please upload MP4, MOV, AVI, WebM, or MKV.");
       }
     },
-    [onFileSelect, isPro]
+    [onFileSelect]
   );
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } =
@@ -68,7 +64,6 @@ export default function Dropzone({ onFileSelect, isPro, className }: DropzonePro
         <input {...getInputProps()} />
 
         <div className="flex flex-col items-center gap-5 text-center px-8 py-10 pointer-events-none">
-          {/* Icon */}
           <div
             className={cn(
               "w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300",
@@ -103,7 +98,6 @@ export default function Dropzone({ onFileSelect, isPro, className }: DropzonePro
             </p>
           </div>
 
-          {/* Privacy badge */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700/50 text-[11px] text-zinc-500">
             <Video className="w-3 h-3" />
             <span>Processed locally — never uploaded</span>
